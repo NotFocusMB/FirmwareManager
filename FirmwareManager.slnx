@@ -1,3 +1,6 @@
 <Solution>
-  <Project Path="FirmwareManager/FirmwareManager.csproj" />
+  <Project Path="FirmwareCore/Core.csproj" Id="b8542423-fed1-4c95-9644-16b4fc74164f" />
+  <Project Path="FirmwareInfrastructure/Infrastructure.csproj" Id="51a63d38-3402-4b64-8d6e-d0547433e5c6" />
+  <Project Path="FirmwareManager/FirmwareClient.csproj" Id="a1753835-1228-46d0-bbab-4e96632bd3c6" />
+  <Project Path="FirmwareServer/FirmwareServer.csproj" Id="41f9bb90-6194-462b-8950-1593642b699a" />
 </Solution>
