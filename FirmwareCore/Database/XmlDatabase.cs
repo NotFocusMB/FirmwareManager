@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;  
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using FrimwareDatabase.Core.Models;
@@ -38,6 +38,7 @@ namespace FrimwareDatabase.Core.Database
             XElement newFirmWare = new XElement("FirmWare",
                 new XElement("CheckSum", firmware.CheckSum),
                 new XElement("FileName", firmware.FileName),
+                new XElement("FilePath", firmware.FilePath ?? ""),
                 new XElement("RegistrationDate", firmware.RegistrationDate));
 
             XElement rootElement = xmlDoc.Root;
@@ -86,6 +87,7 @@ namespace FrimwareDatabase.Core.Database
                 {
                     FileName = element.Element("FileName")?.Value,
                     CheckSum = element.Element("CheckSum")?.Value,
+                    FilePath = element.Element("FilePath")?.Value,
                     RegistrationDate = element.Element("RegistrationDate")?.Value
                 });
             }

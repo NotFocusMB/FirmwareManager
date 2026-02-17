@@ -18,6 +18,11 @@ namespace FrimwareDatabase.Core.Models
         public string FileName { get; set; }
 
         /// <summary>
+        /// Получает или задает полный путь к файлу прошивки.
+        /// </summary>
+        public string FilePath { get; set; }
+
+        /// <summary>
         /// Получает или задает дату регистрации прошивки в базе данных.
         /// </summary>
         public string RegistrationDate { get; set; }
