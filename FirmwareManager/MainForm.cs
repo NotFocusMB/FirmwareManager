@@ -25,7 +25,9 @@ namespace FrimwareDatabase.UI.Forms
 
         // Для панели сервера
         private int _normalHeight = 415;
-        private int _expandedHeight = 520;
+        private int _startHeight = 140;
+        private int _normalWidth = 350;
+        private int _expandedWidth = 670;
         private System.Timers.Timer _serverStatusTimer;
 
         /// <summary>
@@ -43,7 +45,8 @@ namespace FrimwareDatabase.UI.Forms
             _flashService = new FlashService();
 
             // Начальные размеры
-            this.Height = 100;
+            this.Height = _startHeight;
+            this.Width = _normalWidth;
 
             // Явно скрываем панели при запуске
             groupBoxDatabase.Visible = false;
@@ -183,6 +186,7 @@ namespace FrimwareDatabase.UI.Forms
                     LoadFirmwareList();
 
                     groupBoxDatabase.Visible = true;
+                    groupBoxDBOptions.Visible = true;
                     this.Height = _normalHeight;
                 }
             }
@@ -405,9 +409,9 @@ namespace FrimwareDatabase.UI.Forms
                 if (result == DialogResult.Yes)
                 {
                     // Разворачиваем форму, если она свёрнута
-                    if (this.Height == _normalHeight)
+                    if (this.Width == _normalWidth)
                     {
-                        this.Height = _expandedHeight;
+                        this.Width = _expandedWidth;
                         groupBoxOptions.Visible = true;
                         buttonOptions.Text = "▲ Параметры сервера";
                     }
@@ -525,17 +529,17 @@ namespace FrimwareDatabase.UI.Forms
         /// </summary>
         private void buttonOptions_Click(object sender, EventArgs e)
         {
-            if (this.Height == _normalHeight)
+            if (this.Width == _normalWidth)
             {
                 // Разворачиваем
-                this.Height = _expandedHeight;
+                this.Width = _expandedWidth;
                 groupBoxOptions.Visible = true;
                 UpdateServerStatus(); // Обновляем статус при открытии
             }
             else
             {
                 // Сворачиваем
-                this.Height = _normalHeight;
+                this.Width = _normalWidth;
                 groupBoxOptions.Visible = false;
             }
         }
