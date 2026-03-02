@@ -110,7 +110,7 @@ namespace FirmwareInfrastructure.Services
         {
             try
             {
-                // Шаг 1: Находим где лежит сервер
+                //Находим где лежит сервер
                 string serverSourcePath = FindServerExe();
 
                 if (string.IsNullOrEmpty(serverSourcePath))
@@ -124,20 +124,20 @@ namespace FirmwareInfrastructure.Services
                     return false;
                 }
 
-                // Шаг 2: Определяем куда копировать сервер
+                //Определяем куда копировать сервер
                 string installDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "FirmwareServer");
                 string serverTargetPath = Path.Combine(installDir, "FirmwareServer.exe");
 
-                // Шаг 3: Создаём папку, если её нет
+                //Создаём папку, если её нет
                 Directory.CreateDirectory(installDir);
 
-                // Шаг 4: Копируем файл сервера (если нужно)
+                //Копируем файл сервера (если нужно)
                 if (!File.Exists(serverTargetPath) || File.GetLastWriteTime(serverTargetPath) != File.GetLastWriteTime(serverSourcePath))
                 {
                     File.Copy(serverSourcePath, serverTargetPath, true);
                 }
 
-                // Шаг 5: Запускаем installutil от администратора
+                //Запускаем installutil от администратора
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
@@ -230,29 +230,9 @@ namespace FirmwareInfrastructure.Services
         /// </summary>
         private static string FindServerExe()
         {
-            string[] possiblePaths = new[]
-            {
-                // Рядом с клиентом (если скопировали)
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FirmwareServer.exe"),
-                
-                // В папке Debug сервера (при разработке)
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\FirmwareServer\bin\Debug\FirmwareServer.exe"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\FirmwareServer\bin\Release\FirmwareServer.exe"),
-                
-                // Абсолютный путь (надеюсь, вы знаете где проект)
-                @"C:\Users\lavor\source\repos\FirmwareManager\FirmwareServer\bin\Debug\FirmwareServer.exe"
-            };
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Server", "FirmwareServer.exe");
 
-            foreach (string path in possiblePaths)
-            {
-                string fullPath = Path.GetFullPath(path);
-                if (File.Exists(fullPath))
-                {
-                    return fullPath;
-                }
-            }
-
-            return null;
+            return File.Exists(path) ? path : null;
         }
 
         /// <summary>
