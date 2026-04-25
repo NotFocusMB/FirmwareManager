@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="FlashServiceCPP/FlashServiceCPP.vcxproj" Id="f32886ed-b612-425f-bebd-87f0ba415d36" />
+</Solution>

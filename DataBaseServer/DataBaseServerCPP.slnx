@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="DataBaseServerCPP/DataBaseServerCPP.vcxproj" Id="e541fd9c-0421-450d-9522-db1ee0bf4df5" />
+</Solution>
