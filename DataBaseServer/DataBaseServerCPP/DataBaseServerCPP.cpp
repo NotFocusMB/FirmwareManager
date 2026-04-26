@@ -1,6 +1,4 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
-// Убираем принудительную совместимость с OpenSSL
-// #define OPENSSL_API_COMPAT 0x10100000L
 
 #include <iostream>
 #include <string>
@@ -13,11 +11,11 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <chrono>
+#include <memory>
 
-// Определяем максимальный размер полезной нагрузки
 #define CPPHTTPLIB_PAYLOAD_MAX_LENGTH (16LL * 1024 * 1024 * 1024) // 16 GB
 
-// Подключаем заголовки в правильном порядке
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
@@ -26,12 +24,8 @@
 #include "json.hpp"
 #include "sqlite3.h"
 
-// Для MD5 используем Windows CryptoAPI вместо OpenSSL
-// #include <openssl/md5.h> - убираем зависимость от OpenSSL
-
-// Подключаем необходимые библиотеки
 #pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "advapi32.lib") // Для CryptoAPI
+#pragma comment(lib, "advapi32.lib")
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -42,7 +36,7 @@ sqlite3* g_db = nullptr;
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
-// Инициализация Winsock (необходимо для работы httplib)
+// Инициализация Winsock
 bool InitializeWinsock() {
     WSADATA wsaData;
     int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -53,47 +47,37 @@ bool InitializeWinsock() {
     return true;
 }
 
-// Вычисление MD5-хеша с использованием Windows CryptoAPI
+// Вычисление MD5-хеша
 std::string calculateMD5(const std::string& content) {
     HCRYPTPROV hProv = 0;
     HCRYPTHASH hHash = 0;
     BYTE rgbHash[16];
     DWORD cbHash = 16;
 
-    // Получение криптографического провайдера
     if (!CryptAcquireContextW(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-        std::cerr << "CryptAcquireContext failed: " << GetLastError() << std::endl;
         return "";
     }
 
-    // Создание хеш-объекта
     if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash)) {
-        std::cerr << "CryptCreateHash failed: " << GetLastError() << std::endl;
         CryptReleaseContext(hProv, 0);
         return "";
     }
 
-    // Хеширование данных
     if (!CryptHashData(hHash, (const BYTE*)content.c_str(), (DWORD)content.size(), 0)) {
-        std::cerr << "CryptHashData failed: " << GetLastError() << std::endl;
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
         return "";
     }
 
-    // Получение значения хеша
     if (!CryptGetHashParam(hHash, HP_HASHVAL, rgbHash, &cbHash, 0)) {
-        std::cerr << "CryptGetHashParam failed: " << GetLastError() << std::endl;
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
         return "";
     }
 
-    // Очистка ресурсов
     CryptDestroyHash(hHash);
     CryptReleaseContext(hProv, 0);
 
-    // Преобразование в строку
     std::stringstream ss;
     for (DWORD i = 0; i < cbHash; i++) {
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)rgbHash[i];
@@ -101,7 +85,7 @@ std::string calculateMD5(const std::string& content) {
     return ss.str();
 }
 
-// Получение текущих даты и времени в формате строки
+// Получение текущих даты и времени
 std::string getCurrentDateTime() {
     time_t now = time(nullptr);
     struct tm timeinfo;
@@ -111,7 +95,7 @@ std::string getCurrentDateTime() {
     return std::string(buf);
 }
 
-// Инициализация базы данных SQLite
+// Инициализация базы данных
 sqlite3* initDatabase() {
     sqlite3* db;
     int rc = sqlite3_open("firmwares.db", &db);
@@ -120,10 +104,8 @@ sqlite3* initDatabase() {
         return nullptr;
     }
 
-    // Включение WAL-режима для лучшей производительности
     sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
 
-    // Таблица с MD5 как PRIMARY KEY
     const char* createTableSQL = R"(
         CREATE TABLE IF NOT EXISTS firmwares (
             md5 TEXT PRIMARY KEY,
@@ -147,7 +129,7 @@ sqlite3* initDatabase() {
     return db;
 }
 
-// Добавление записи о прошивке в базу данных
+// Добавление записи о прошивке
 bool addFirmwareToDB(const std::string& md5, const std::string& filename,
     const std::string& file_path, long long file_size) {
     std::string date_added = getCurrentDateTime();
@@ -167,7 +149,7 @@ bool addFirmwareToDB(const std::string& md5, const std::string& filename,
     return rc == SQLITE_DONE;
 }
 
-// Получение списка всех прошивок из базы данных
+// Получение списка всех прошивок
 json getAllFirmwares() {
     json firmwares = json::array();
     const char* sql = "SELECT md5, filename, file_size, date_added FROM firmwares;";
@@ -193,7 +175,7 @@ json getAllFirmwares() {
     return firmwares;
 }
 
-// Получение пути к файлу прошивки по MD5-хешу
+// Получение пути к файлу по MD5
 std::string getFilePathByMD5(const std::string& md5) {
     std::string sql = "SELECT file_path FROM firmwares WHERE md5 = ?;";
     sqlite3_stmt* stmt;
@@ -209,7 +191,7 @@ std::string getFilePathByMD5(const std::string& md5) {
     return file_path;
 }
 
-// Получение имени файла прошивки по MD5-хешу
+// Получение имени файла по MD5
 std::string getFilenameByMD5(const std::string& md5) {
     std::string sql = "SELECT filename FROM firmwares WHERE md5 = ?;";
     sqlite3_stmt* stmt;
@@ -225,7 +207,7 @@ std::string getFilenameByMD5(const std::string& md5) {
     return filename;
 }
 
-// Удаление записи о прошивке из базы данных по MD5-хешу
+// Удаление прошивки по MD5
 bool deleteFirmwareByMD5(const std::string& md5) {
     std::string sql = "DELETE FROM firmwares WHERE md5 = ?;";
     sqlite3_stmt* stmt;
@@ -237,7 +219,7 @@ bool deleteFirmwareByMD5(const std::string& md5) {
     return rc == SQLITE_DONE;
 }
 
-// Проверка существования MD5-хеша в базе данных
+// Проверка существования MD5
 bool isMD5Exists(const std::string& md5) {
     std::string sql = "SELECT 1 FROM firmwares WHERE md5 = ?;";
     sqlite3_stmt* stmt;
@@ -253,7 +235,7 @@ bool isMD5Exists(const std::string& md5) {
 // ==================== ОБРАБОТЧИКИ HTTP-ЗАПРОСОВ ====================
 
 
-// Обработка GET /status - возврат статуса работы сервера
+// Обработка GET /status
 void handleStatus(const httplib::Request& req, httplib::Response& res) {
     try {
         json response = {
@@ -268,7 +250,7 @@ void handleStatus(const httplib::Request& req, httplib::Response& res) {
     }
 }
 
-// Обработка GET /images - возврат списка всех прошивок в формате JSON
+// Обработка GET /images
 void handleGetImages(const httplib::Request& req, httplib::Response& res) {
     try {
         json firmwares = getAllFirmwares();
@@ -281,12 +263,11 @@ void handleGetImages(const httplib::Request& req, httplib::Response& res) {
     }
 }
 
-// Обработка POST /image - прием файла прошивки, вычисление MD5, сохранение
+// Обработка POST /image
 void handlePostImage(const httplib::Request& req, httplib::Response& res) {
     try {
         std::cout << "[DEBUG] ========== POST /image ==========" << std::endl;
-        std::cout << "[DEBUG] Content-Length: " << req.get_header_value("Content-Length") << std::endl;
-        std::cout << "[DEBUG] Body size: " << req.body.size() << " bytes" << std::endl;
+        std::cout << "[DEBUG] Body size: " << req.body.size() / 1024 / 1024 << " MB" << std::endl;
 
         if (req.body.empty()) {
             json error = { {"error", "No data received"} };
@@ -295,7 +276,6 @@ void handlePostImage(const httplib::Request& req, httplib::Response& res) {
             return;
         }
 
-        // Вычисление MD5 содержимого
         std::string md5 = calculateMD5(req.body);
         if (md5.empty()) {
             json error = { {"error", "Failed to calculate MD5"} };
@@ -304,7 +284,6 @@ void handlePostImage(const httplib::Request& req, httplib::Response& res) {
             return;
         }
 
-        // Проверка на дубликат
         if (isMD5Exists(md5)) {
             json response = {
                 {"status", "duplicate"},
@@ -316,13 +295,11 @@ void handlePostImage(const httplib::Request& req, httplib::Response& res) {
             return;
         }
 
-        // Получение имени файла из заголовка
         std::string filename = "firmware_" + md5.substr(0, 8) + ".bin";
         if (req.has_header("X-Filename")) {
             filename = req.get_header_value("X-Filename");
         }
 
-        // Сохранение файла на диск
         std::string file_path = "storage/" + md5;
         std::ofstream out_file(file_path, std::ios::binary);
         if (!out_file.is_open()) {
@@ -335,7 +312,6 @@ void handlePostImage(const httplib::Request& req, httplib::Response& res) {
         out_file.write(req.body.c_str(), req.body.size());
         out_file.close();
 
-        // Добавление записи в базу данных
         bool success = addFirmwareToDB(md5, filename, file_path, req.body.size());
 
         if (success) {
@@ -363,7 +339,7 @@ void handlePostImage(const httplib::Request& req, httplib::Response& res) {
     }
 }
 
-// Обработка GET /image/{md5}/info - возврат информации о прошивке по MD5-хешу
+// Обработка GET /image/{md5}/info
 void handleGetImageInfo(const httplib::Request& req, httplib::Response& res) {
     try {
         std::string md5 = req.matches[1];
@@ -397,7 +373,7 @@ void handleGetImageInfo(const httplib::Request& req, httplib::Response& res) {
     }
 }
 
-// Обработка GET /image/{md5}/file - отправка файла прошивки клиенту
+// Обработка GET /image/{md5}/file - потоковая передача файла
 void handleGetFile(const httplib::Request& req, httplib::Response& res) {
     try {
         std::string md5 = req.matches[1];
@@ -405,38 +381,78 @@ void handleGetFile(const httplib::Request& req, httplib::Response& res) {
 
         std::string file_path = getFilePathByMD5(md5);
         if (file_path.empty() || !fs::exists(file_path)) {
+            std::cout << "[DEBUG] File not found: " << file_path << std::endl;
             res.status = 404;
             return;
         }
 
-        // Чтение всего файла в память
-        std::ifstream file(file_path, std::ios::binary | std::ios::ate);
-        if (!file.is_open()) {
+        // Получаем размер файла
+        long long file_size = fs::file_size(file_path);
+        std::cout << "[DEBUG] File size: " << file_size / 1024 / 1024 << " MB" << std::endl;
+
+        // Открываем файл
+        auto file_ptr = std::make_shared<std::ifstream>(file_path, std::ios::binary);
+        if (!file_ptr->is_open()) {
+            std::cout << "[DEBUG] Cannot open file" << std::endl;
             res.status = 500;
             return;
         }
 
-        std::streamsize file_size = file.tellg();
-        file.seekg(0, std::ios::beg);
+        // Устанавливаем заголовки
+        res.set_header("Content-Type", "application/octet-stream");
+        res.set_header("Content-Length", std::to_string(file_size));
 
-        std::vector<char> buffer(file_size);
-        if (file.read(buffer.data(), file_size)) {
-            res.set_header("Content-Type", "application/octet-stream");
-            res.set_header("Content-Length", std::to_string(file_size));
-            res.set_content(std::string(buffer.data(), file_size), "application/octet-stream");
-            std::cout << "[DEBUG] Sent " << file_size / 1024 / 1024 << " MB" << std::endl;
-        }
-        else {
-            res.status = 500;
-        }
+        // Потоковая передача чанками
+        auto start_time = std::chrono::steady_clock::now();
+
+        res.set_chunked_content_provider(
+            "application/octet-stream",
+            [file_ptr, file_size, start_time](size_t offset, httplib::DataSink& sink) -> bool {
+                const size_t BUFFER_SIZE = 1024 * 1024; // 1 МБ
+                static char buffer[BUFFER_SIZE];
+
+                if (offset >= (size_t)file_size) {
+                    sink.done();
+                    return false;
+                }
+
+                file_ptr->seekg(offset);
+                size_t remaining = (size_t)(file_size - offset);
+                size_t to_read = (remaining < BUFFER_SIZE) ? remaining : BUFFER_SIZE;
+                file_ptr->read(buffer, to_read);
+
+                if (file_ptr->gcount() > 0) {
+                    sink.write(buffer, (size_t)file_ptr->gcount());
+
+                    // Прогресс каждые 100 МБ
+                    if (offset % (100 * 1024 * 1024) < BUFFER_SIZE) {
+                        auto now = std::chrono::steady_clock::now();
+                        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+                        if (elapsed > 0) {
+                            double speed = offset / 1024.0 / 1024.0 / elapsed;
+                            std::cout << "\r[PROGRESS] Sent: " << offset / 1024 / 1024
+                                << " / " << file_size / 1024 / 1024 << " MB"
+                                << " (" << speed << " MB/s)" << std::flush;
+                        }
+                    }
+                    return true;
+                }
+
+                sink.done();
+                return false;
+            }
+        );
+
+        std::cout << "\n[DEBUG] Streaming completed" << std::endl;
+
     }
     catch (const std::exception& e) {
-        std::cerr << "Error in GET /image/file: " << e.what() << std::endl;
+        std::cerr << "[ERROR] Error in GET /image/file: " << e.what() << std::endl;
         res.status = 500;
     }
 }
 
-// Обработка DELETE /image/{md5} - удаление прошивки из базы данных и с диска
+// Обработка DELETE /image/{md5}
 void handleDeleteImage(const httplib::Request& req, httplib::Response& res) {
     try {
         std::string md5 = req.matches[1];
@@ -469,20 +485,7 @@ void handleDeleteImage(const httplib::Request& req, httplib::Response& res) {
 // ==================== ФУНКЦИИ АВТОЗАГРУЗКИ ====================
 
 
-// Проверка наличия прав администратора
-bool IsRunningAsAdmin() {
-    BOOL is_admin = FALSE;
-    PSID admin_group = nullptr;
-    SID_IDENTIFIER_AUTHORITY nt_authority = SECURITY_NT_AUTHORITY;
-    if (AllocateAndInitializeSid(&nt_authority, 2, SECURITY_BUILTIN_DOMAIN_RID,
-        DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &admin_group)) {
-        CheckTokenMembership(nullptr, admin_group, &is_admin);
-        FreeSid(admin_group);
-    }
-    return is_admin != FALSE;
-}
-
-// Добавление программы в автозагрузку через реестр Windows
+// Добавление в реестр
 void AddToRegistryStartup() {
     HKEY hKey;
     LONG result = RegOpenKeyExA(HKEY_CURRENT_USER,
@@ -490,77 +493,52 @@ void AddToRegistryStartup() {
         0, KEY_SET_VALUE, &hKey);
 
     if (result != ERROR_SUCCESS) {
-        std::cerr << "Failed to open registry key: " << result << std::endl;
         return;
     }
 
     char exePath[MAX_PATH];
     GetModuleFileNameA(NULL, exePath, MAX_PATH);
 
-    // Получение пути к папке с программой
-    std::string dirPath = fs::path(exePath).parent_path().string();
     std::string command = std::string("\"") + exePath + "\" --background";
 
-    result = RegSetValueExA(hKey, "FirmwareDBServer", 0, REG_SZ,
+    RegSetValueExA(hKey, "FirmwareDBServer", 0, REG_SZ,
         (BYTE*)command.c_str(), (DWORD)(command.length() + 1));
-
     RegCloseKey(hKey);
-
-    if (result == ERROR_SUCCESS) {
-        std::cout << "Added to registry startup: " << command << std::endl;
-    }
-    else {
-        std::cerr << "Failed to set registry value: " << result << std::endl;
-    }
 }
 
-// Удаление программы из автозагрузки
+// Удаление из автозагрузки
 void RemoveFromStartup() {
     HKEY hKey;
-    LONG result = RegOpenKeyExA(HKEY_CURRENT_USER,
+    if (RegOpenKeyExA(HKEY_CURRENT_USER,
         "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-        0, KEY_SET_VALUE, &hKey);
-    if (result == ERROR_SUCCESS) {
+        0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS) {
         RegDeleteValueA(hKey, "FirmwareDBServer");
         RegCloseKey(hKey);
-        std::cout << "Removed from registry startup" << std::endl;
     }
 }
 
-// Запуск сервера в фоновом режиме
+// Запуск в фоновом режиме
 void RunBackgroundMode() {
-    // Скрытие консольного окна
     HWND hWnd = GetConsoleWindow();
     if (hWnd) {
         ShowWindow(hWnd, SW_HIDE);
     }
 
-    std::cout << "Starting Database Server in background mode..." << std::endl;
+    if (!InitializeWinsock()) return;
 
-    // Инициализация Winsock
-    if (!InitializeWinsock()) {
-        std::cerr << "Failed to initialize Winsock" << std::endl;
-        return;
-    }
-
-    // Создание папки для хранения файлов
     if (!fs::exists("storage")) {
         fs::create_directory("storage");
     }
 
-    // Инициализация базы данных
     g_db = initDatabase();
     if (!g_db) {
-        std::cerr << "Failed to initialize database" << std::endl;
         WSACleanup();
         return;
     }
 
-    // Создание HTTP-сервера
     httplib::Server server;
-    server.set_payload_max_length(16LL * 1024 * 1024 * 1024); // 16 GB
+    server.set_payload_max_length(16LL * 1024 * 1024 * 1024);
 
-    // Регистрация обработчиков
     server.Get("/status", handleStatus);
     server.Get("/images", handleGetImages);
     server.Post("/image", handlePostImage);
@@ -568,43 +546,30 @@ void RunBackgroundMode() {
     server.Get(R"(/image/([a-fA-F0-9]{32})/file)", handleGetFile);
     server.Delete(R"(/image/([a-fA-F0-9]{32}))", handleDeleteImage);
 
-    std::cout << "Server started on port 8081" << std::endl;
-
     server.listen("0.0.0.0", 8081);
 
     sqlite3_close(g_db);
     WSACleanup();
 }
 
-// Запуск сервера в консольном режиме
+// Запуск в консольном режиме
 void RunConsoleMode() {
-    std::cout << "Starting Database Server..." << std::endl;
+    if (!InitializeWinsock()) return;
 
-    // Инициализация Winsock
-    if (!InitializeWinsock()) {
-        std::cerr << "Failed to initialize Winsock" << std::endl;
-        return;
-    }
-
-    // Создание папки для хранения файлов
     if (!fs::exists("storage")) {
         fs::create_directory("storage");
         std::cout << "Created storage folder" << std::endl;
     }
 
-    // Инициализация базы данных
     g_db = initDatabase();
     if (!g_db) {
-        std::cerr << "Failed to initialize database" << std::endl;
         WSACleanup();
         return;
     }
 
-    // Создание HTTP-сервера
     httplib::Server server;
-    server.set_payload_max_length(16LL * 1024 * 1024 * 1024); // 16 GB
+    server.set_payload_max_length(16LL * 1024 * 1024 * 1024);
 
-    // Регистрация обработчиков
     server.Get("/status", handleStatus);
     server.Get("/images", handleGetImages);
     server.Post("/image", handlePostImage);
@@ -626,18 +591,15 @@ void RunConsoleMode() {
 // ==================== ОСНОВНАЯ ФУНКЦИЯ ====================
 
 
-// Главная точка входа
 int main(int argc, char* argv[]) {
     try {
-        // Установка рабочей директории в папку с программой
+        // Установка рабочей директории
         char exePath[MAX_PATH];
         GetModuleFileNameA(NULL, exePath, MAX_PATH);
         std::string exeDir = fs::path(exePath).parent_path().string();
         SetCurrentDirectoryA(exeDir.c_str());
 
-        std::cout << "Working directory: " << exeDir << std::endl;
-
-        // Обработка аргументов командной строки
+        // Обработка аргументов
         bool background_mode = false;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--background") == 0) {
@@ -645,23 +607,20 @@ int main(int argc, char* argv[]) {
             }
             else if (strcmp(argv[i], "--install") == 0) {
                 AddToRegistryStartup();
-                std::cout << "Installed to startup successfully" << std::endl;
                 return 0;
             }
             else if (strcmp(argv[i], "--remove") == 0) {
                 RemoveFromStartup();
-                std::cout << "Removed from startup" << std::endl;
                 return 0;
             }
         }
 
-        // Запуск в фоновом режиме
         if (background_mode) {
             RunBackgroundMode();
             return 0;
         }
 
-        // Обычный консольный запуск
+        // Первый запуск - установка в автозагрузку
         HKEY hKey;
         bool already_installed = false;
         if (RegOpenKeyExA(HKEY_CURRENT_USER,
@@ -677,11 +636,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (!already_installed) {
-            std::cout << "First run detected - installing to autorun..." << std::endl;
             AddToRegistryStartup();
-        }
-        else {
-            std::cout << "Already installed in autorun" << std::endl;
         }
 
         RunConsoleMode();
