@@ -44,7 +44,6 @@ namespace FrimwareDatabase.UI.Forms
             this.Width = _normalWidth;
 
             groupBoxDatabase.Visible = true;
-            this.Height = _normalHeight;
 
             UpdateDatabaseGroupBoxTitle();
 
@@ -61,7 +60,6 @@ namespace FrimwareDatabase.UI.Forms
         private void UpdateDatabaseGroupBoxTitle()
         {
             string serverUrl = _config.DatabaseServerUrl;
-            // Извлекаем IP и порт из URL
             string serverInfo = serverUrl.Replace("http://", "").Replace("https://", "");
             groupBoxDatabase.Text = $"База данных прошивок [{serverInfo}]";
         }
@@ -103,7 +101,7 @@ namespace FrimwareDatabase.UI.Forms
         {
             if (labelDatabaseStatus == null) return;
 
-            // Проверяем статус БД-сервера
+            // Проверка статуса БД-сервера
             bool dbAvailable = await _databaseClient.IsServerAvailableAsync();
 
             if (dbAvailable)
@@ -117,7 +115,7 @@ namespace FrimwareDatabase.UI.Forms
                 labelDatabaseStatus.ForeColor = Color.Red;
             }
 
-            // Проверяем статус сервиса записи
+            // Проверка статуса сервиса записи
             bool flashServiceAvailable = await CheckFlashServiceStatusAsync();
 
             if (flashServiceAvailable)
@@ -147,7 +145,7 @@ namespace FrimwareDatabase.UI.Forms
         {
             try
             {
-                // Проверяем доступность сервера
+                // Проверка доступности сервера
                 if (!await _databaseClient.IsServerAvailableAsync())
                 {
                     listViewFirmwares.Items.Clear();
@@ -165,7 +163,7 @@ namespace FrimwareDatabase.UI.Forms
                 {
                     var item = new ListViewItem(firmware.FileName);
 
-                    // Форматируем размер в МБ
+                    // Перевод размера в МБ
                     string sizeMB = firmware.FileSize > 0
                         ? $"{firmware.FileSize / 1024.0 / 1024.0:F2}"
                         : "—";
@@ -191,7 +189,7 @@ namespace FrimwareDatabase.UI.Forms
         }
 
         /// <summary>
-        /// Обработчик кнопки "Добавить файл" (добавление готового образа).
+        /// Обработчик кнопки "Добавить файл"
         /// </summary>
         private async void buttonAddFile_Click(object sender, EventArgs e)
         {
@@ -217,7 +215,7 @@ namespace FrimwareDatabase.UI.Forms
                 buttonAddFile.Enabled = false;
                 buttonAddFile.Text = "Добавление...";
 
-                // Показываем форму прогресса
+                // Отображение формы прогресса
                 using (var progressForm = new ProgressForm("Добавление прошивки"))
                 {
                     var progress = new Progress<long>(bytesSent =>
@@ -261,10 +259,11 @@ namespace FrimwareDatabase.UI.Forms
 
         /// <summary>
         /// Обработчик кнопки "Добавить образ носителя" (создание образа с флешки).
+        /// НЕ ИСПОЛЬЗУЕТСЯ
         /// </summary>
         private async void buttonAddImageFromUSB_Click(object sender, EventArgs e)
         {
-            // Проверяем доступность БД-сервера
+            // Проверка доступности БД-сервера
             if (!await _databaseClient.IsServerAvailableAsync())
             {
                 MessageBox.Show("БД-сервер недоступен.", "Ошибка",
@@ -272,7 +271,7 @@ namespace FrimwareDatabase.UI.Forms
                 return;
             }
 
-            // Проверяем доступность сервиса записи
+            // Проверка доступности сервиса записи
             if (!await CheckFlashServiceStatusAsync())
             {
                 MessageBox.Show(
@@ -283,7 +282,7 @@ namespace FrimwareDatabase.UI.Forms
                 return;
             }
 
-            // Получаем список USB-накопителей
+            // Получение списка USB-накопителей
             List<FlashWriterClient.UsbDriveInfo> usbDrives;
             try
             {
@@ -303,7 +302,7 @@ namespace FrimwareDatabase.UI.Forms
                 return;
             }
 
-            // Выбираем диск-источник
+            // Выбор диска - источника
             string sourceDrive;
             if (usbDrives.Count == 1)
             {
@@ -317,7 +316,7 @@ namespace FrimwareDatabase.UI.Forms
                 sourceDrive = usbDrives[choice].letter;
             }
 
-            // Запрашиваем имя файла для сохранения
+            // Запрос имени файла для сохранения
             string filename = Microsoft.VisualBasic.Interaction.InputBox(
                 "Введите имя файла для сохранения образа:",
                 "Имя файла",
@@ -327,7 +326,7 @@ namespace FrimwareDatabase.UI.Forms
             if (string.IsNullOrEmpty(filename))
                 return;
 
-            // Добавляем расширение, если его нет
+            // Добавление расширения, если его нет
             if (!filename.Contains('.'))
                 filename += ".img";
 
@@ -352,7 +351,7 @@ namespace FrimwareDatabase.UI.Forms
                     MessageBox.Show($"Образ с диска {sourceDrive} успешно скопирован в базу данных.",
                         "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    // Обновляем список прошивок
+                    // Обновление списка прошивок
                     await LoadFirmwareListAsync();
                 }
                 else
@@ -445,7 +444,7 @@ namespace FrimwareDatabase.UI.Forms
         /// </summary>
         private async void buttonWriteToUSB_Click(object sender, EventArgs e)
         {
-            // Проверяем доступность БД-сервера
+            // Проверка доступности БД-сервера
             if (!await _databaseClient.IsServerAvailableAsync())
             {
                 MessageBox.Show(
@@ -456,7 +455,7 @@ namespace FrimwareDatabase.UI.Forms
                 return;
             }
 
-            // Проверяем доступность сервиса записи
+            // Проверка доступности сервиса записи
             if (!await CheckFlashServiceStatusAsync())
             {
                 MessageBox.Show(
@@ -484,7 +483,7 @@ namespace FrimwareDatabase.UI.Forms
                 return;
             }
 
-            // Получаем список USB-накопителей
+            // Получение списка USB-накопителей
             List<FlashWriterClient.UsbDriveInfo> usbDrives;
             try
             {
@@ -504,7 +503,7 @@ namespace FrimwareDatabase.UI.Forms
                 return;
             }
 
-            // Выбираем целевой диск
+            // Выбор целевого диска
             string targetDrive;
             if (usbDrives.Count == 1)
             {
@@ -518,7 +517,7 @@ namespace FrimwareDatabase.UI.Forms
                 targetDrive = usbDrives[choice].letter;
             }
 
-            // Предупреждение о форматировании (уничтожении данных)
+            // Предупреждение о форматировании
             var confirmWrite = MessageBox.Show(
                 $"ВНИМАНИЕ! Запись на диск {targetDrive} УНИЧТОЖИТ все данные на флешке.\n\n" +
                 $"Вы действительно хотите записать файл '{firmware.FileName}'?\n\n" +
@@ -535,12 +534,12 @@ namespace FrimwareDatabase.UI.Forms
                 buttonWriteToUSB.Enabled = false;
                 buttonWriteToUSB.Text = "Запись...";
 
-                // Показываем форму прогресса
+                // Отображение полоски прогресса
                 using (var progressForm = new ProgressForm("Запись на USB"))
                 {
                     var progress = new Progress<long>(bytesWritten =>
                     {
-                        // Обновляем текст с прогрессом
+                        // Обновление текста прогресса
                         if (bytesWritten > 0)
                         {
                             double mb = bytesWritten / 1024.0 / 1024.0;
@@ -555,7 +554,7 @@ namespace FrimwareDatabase.UI.Forms
 
                     try
                     {
-                        // Отправляем сервису записи MD5, букву диска и адрес БД-сервера
+                        // Отправление сервису записи MD5, буквы диска и адреса БД-сервера
                         bool success = await _flashWriterClient.WriteToUsbByMd5WithProgressAsync(
                             firmware.Md5,
                             targetDrive,
