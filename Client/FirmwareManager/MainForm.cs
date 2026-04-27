@@ -35,6 +35,7 @@ namespace FrimwareDatabase.UI.Forms
             InitializeComponent();
 
             _config = ConfigService.LoadConfig();
+            MessageBox.Show($"Connecting to: {_config.DatabaseServerUrl}");
             _databaseClient = new DatabaseClient(_config.DatabaseServerUrl);
             _flashWriterClient = new FlashWriterClient(_config.FlashServiceUrl);
 
@@ -534,28 +535,60 @@ namespace FrimwareDatabase.UI.Forms
                 buttonWriteToUSB.Enabled = false;
                 buttonWriteToUSB.Text = "Запись...";
 
-                // Отправляем сервису записи MD5, букву диска и адрес БД-сервера
-                // Сервис сам скачает файл с БД-сервера и запишет на флешку
-                bool success = await _flashWriterClient.WriteToUsbByMd5Async(
-                    firmware.Md5,
-                    targetDrive,
-                    _config.DatabaseServerUrl);
+                // Показываем форму прогресса
+                using (var progressForm = new ProgressForm("Запись на USB"))
+                {
+                    var progress = new Progress<long>(bytesWritten =>
+                    {
+                        // Обновляем текст с прогрессом
+                        if (bytesWritten > 0)
+                        {
+                            double mb = bytesWritten / 1024.0 / 1024.0;
+                            progressForm.UpdateProgress(mb, "MB");
+                        }
+                    });
 
-                if (success)
-                {
-                    MessageBox.Show($"Файл '{firmware.FileName}' успешно записан на {targetDrive}",
-                        "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var cts = new CancellationTokenSource();
+                    progressForm.CancelRequested += (s, ev) => cts.Cancel();
+
+                    progressForm.Show();
+
+                    try
+                    {
+                        // Отправляем сервису записи MD5, букву диска и адрес БД-сервера
+                        bool success = await _flashWriterClient.WriteToUsbByMd5WithProgressAsync(
+                            firmware.Md5,
+                            targetDrive,
+                            _config.DatabaseServerUrl,
+                            progress,
+                            cts.Token);
+
+                        progressForm.Close();
+
+                        if (success)
+                        {
+                            MessageBox.Show($"Файл '{firmware.FileName}' успешно записан на {targetDrive}",
+                                "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Ошибка при записи на USB.", "Ошибка",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        progressForm.Close();
+                        MessageBox.Show("Операция записи была отменена пользователем.", "Отмена",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        progressForm.Close();
+                        MessageBox.Show($"Ошибка при записи файла: {ex.Message}", "Ошибка",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
-                else
-                {
-                    MessageBox.Show("Ошибка при записи на USB.", "Ошибка",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при записи файла: {ex.Message}", "Ошибка",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {

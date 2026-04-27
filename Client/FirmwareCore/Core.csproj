@@ -56,7 +56,6 @@
     <Compile Include="Services\ConfigService.cs" />
     <Compile Include="Services\DataBaseClient.cs" />
     <Compile Include="Services\FlashWriterClient.cs" />
-    <Compile Include="Services\IFlashService.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -33,9 +33,6 @@ namespace fs = std::filesystem;
 // Глобальный указатель на базу данных
 sqlite3* g_db = nullptr;
 
-
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
-
 // Инициализация Winsock
 bool InitializeWinsock() {
     WSADATA wsaData;
@@ -230,10 +227,6 @@ bool isMD5Exists(const std::string& md5) {
     sqlite3_finalize(stmt);
     return exists;
 }
-
-
-// ==================== ОБРАБОТЧИКИ HTTP-ЗАПРОСОВ ====================
-
 
 // Обработка GET /status
 void handleStatus(const httplib::Request& req, httplib::Response& res) {
@@ -481,10 +474,6 @@ void handleDeleteImage(const httplib::Request& req, httplib::Response& res) {
     }
 }
 
-
-// ==================== ФУНКЦИИ АВТОЗАГРУЗКИ ====================
-
-
 // Добавление в реестр
 void AddToRegistryStartup() {
     HKEY hKey;
@@ -586,10 +575,6 @@ void RunConsoleMode() {
     sqlite3_close(g_db);
     WSACleanup();
 }
-
-
-// ==================== ОСНОВНАЯ ФУНКЦИЯ ====================
-
 
 int main(int argc, char* argv[]) {
     try {

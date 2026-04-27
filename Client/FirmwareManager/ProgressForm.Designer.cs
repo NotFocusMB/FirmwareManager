@@ -64,7 +64,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(434, 81);
+            this.ClientSize = new System.Drawing.Size(434, 84);
             this.ControlBox = false;
             this.Controls.Add(this.label);
             this.Controls.Add(this.cancelButton);
@@ -72,6 +72,7 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Name = "ProgressForm";
             this.Text = "ProgressForm";
+            this.Load += new System.EventHandler(this.ProgressForm_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

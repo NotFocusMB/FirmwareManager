@@ -37,7 +37,6 @@
             this.groupBoxOptions = new System.Windows.Forms.GroupBox();
             this.label3 = new System.Windows.Forms.Label();
             this.labelDatabaseStatus = new System.Windows.Forms.Label();
-            this.buttonToggleServer = new System.Windows.Forms.Button();
             this.labelFlashServiceStatus = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.groupBoxDatabase.SuspendLayout();
@@ -113,7 +112,6 @@
             // 
             this.groupBoxOptions.Controls.Add(this.label3);
             this.groupBoxOptions.Controls.Add(this.labelDatabaseStatus);
-            this.groupBoxOptions.Controls.Add(this.buttonToggleServer);
             this.groupBoxOptions.Controls.Add(this.labelFlashServiceStatus);
             this.groupBoxOptions.Controls.Add(this.label2);
             this.groupBoxOptions.Location = new System.Drawing.Point(12, 373);
@@ -140,16 +138,6 @@
             this.labelDatabaseStatus.Size = new System.Drawing.Size(16, 13);
             this.labelDatabaseStatus.TabIndex = 6;
             this.labelDatabaseStatus.Text = "...";
-            // 
-            // buttonToggleServer
-            // 
-            this.buttonToggleServer.Location = new System.Drawing.Point(250, 26);
-            this.buttonToggleServer.Name = "buttonToggleServer";
-            this.buttonToggleServer.Size = new System.Drawing.Size(101, 35);
-            this.buttonToggleServer.TabIndex = 4;
-            this.buttonToggleServer.Text = "Установить сервер";
-            this.buttonToggleServer.UseVisualStyleBackColor = true;
-            this.buttonToggleServer.Click += new System.EventHandler(this.buttonToggleServer_Click);
             // 
             // labelFlashServiceStatus
             // 
@@ -199,7 +187,6 @@
         private System.Windows.Forms.Label labelFlashServiceStatus;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label labelDatabaseStatus;
-        private System.Windows.Forms.Button buttonToggleServer;
         private System.Windows.Forms.Label label3;
     }
 }

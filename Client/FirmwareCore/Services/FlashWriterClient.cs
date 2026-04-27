@@ -1,9 +1,10 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace FirmwareClient.Services
 {
@@ -57,7 +58,7 @@ namespace FirmwareClient.Services
         }
 
         /// <summary>
-        /// Записывает прошивку на флешку (по MD5, без скачивания клиентом)
+        /// Записывает прошивку на флешку
         /// </summary>
         public async Task<bool> WriteToUsbByMd5Async(string md5, string driveLetter, string dbServerUrl)
         {
@@ -77,6 +78,44 @@ namespace FirmwareClient.Services
                 var result = JsonConvert.DeserializeObject<WriteResponse>(responseJson);
 
                 return result.status == "ok";
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка записи на USB: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Записывает прошивку на флешку с отображением прогресса
+        /// </summary>
+        public async Task<bool> WriteToUsbByMd5WithProgressAsync(string md5, string driveLetter,
+            string dbServerUrl, IProgress<long> progress, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var request = new
+                {
+                    md5 = md5,
+                    drive = driveLetter,
+                    db_server = dbServerUrl
+                };
+                var json = JsonConvert.SerializeObject(request);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                content.Headers.ContentLength = json.Length;
+
+                var response = await _httpClient.PostAsync(
+                    $"{_baseUrl}/write-from-md5",
+                    content,
+                    cancellationToken);
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var result = JsonConvert.DeserializeObject<WriteResponse>(responseJson);
+
+                return result.status == "ok";
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -112,7 +151,9 @@ namespace FirmwareClient.Services
             }
         }
 
-        // Вспомогательные классы
+        /// <summary>
+        /// Информация о USB-носителе
+        /// </summary>
         public class UsbDriveInfo
         {
             public string letter { get; set; }

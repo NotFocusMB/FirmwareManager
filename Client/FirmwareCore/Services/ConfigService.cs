@@ -9,7 +9,7 @@ namespace FrimwareDatabase.Core.Services
     /// </summary>
     public class AppConfig
     {
-        public string DatabaseServerUrl { get; set; } = "http://192.168.1.100:8081"; 
+        public string DatabaseServerUrl { get; set; } = "http://192.168.50.230:8081"; 
         public string FlashServiceUrl { get; set; } = "http://localhost:8080"; 
     }
 
@@ -27,7 +27,7 @@ namespace FrimwareDatabase.Core.Services
         {
             if (!File.Exists(ConfigPath))
             {
-                // Создаём конфиг по умолчанию
+                // Создание конфига по умолчанию
                 var defaultConfig = new AppConfig();
                 SaveConfig(defaultConfig);
                 return defaultConfig;
